@@ -1,0 +1,771 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Medo do Crime: experiência em realidade virtual feita pela UPVR para a pesquisa da USP de Ribeirão Preto. Uma praça inspirada na Praça da Sé em seis estágios de limpeza e iluminação.">
+<meta property="og:title" content="Medo do Crime · UPVR × USP Ribeirão Preto">
+<meta property="og:image" content="img/catedral-dia.jpg">
+<title>Medo do Crime · USP</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=IBM+Plex+Sans:wght@300;400;500&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: uma praça fixa na tela que anoitece com a rolagem (5 capítulos alternando lados), depois um caderno de campo em colunas sobre asfalto. */
+:root{
+  --night:#0a0c10;      /* fundo: asfalto à noite */
+  --asphalt:#13161c;    /* superfícies */
+  --paper:#ebe4d4;      /* texto: papel de laudo */
+  --dim:#9b968b;        /* texto secundário */
+  --sodium:#e8852b;     /* lâmpada de vapor de sódio (cor padrão de grupo no USPVR Tools) */
+  --signal:#5b84e6;     /* azul de cenário do painel do operador */
+  --rule:rgba(235,228,212,.14);
+  --display:"Instrument Serif","Cormorant Garamond",Georgia,serif;
+  --body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;
+  --gutter:max(16px, env(safe-area-inset-left, 0px));
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html{background:var(--night)}
+body{background:var(--night);color:var(--paper);font:300 16px/1.65 var(--body);-webkit-font-smoothing:antialiased;overflow-x:hidden}
+a{color:inherit}
+:focus-visible{outline:2px solid var(--sodium);outline-offset:3px}
+.label{font:500 11px/1.4 var(--mono);letter-spacing:.18em;text-transform:uppercase;color:var(--dim)}
+.wrap{max-width:1180px;margin:0 auto;padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px))}
+h1,h2,h3{font-family:var(--display);font-weight:400;text-wrap:balance;margin:0;letter-spacing:-.01em}
+
+/* ---------- topo ---------- */
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:30;background:var(--night)}
+.top{position:fixed;top:env(safe-area-inset-top,0px);left:0;right:0;z-index:20;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:16px;
+  padding:18px max(20px, env(safe-area-inset-right, 0px)) 18px max(20px, env(safe-area-inset-left, 0px));
+  background:linear-gradient(rgba(10,12,16,.75),rgba(10,12,16,0));pointer-events:none}
+.top>*{pointer-events:auto}
+.top .back{font:500 11px/1 var(--mono);letter-spacing:.16em;text-transform:uppercase;text-decoration:none;color:var(--paper);opacity:.85}
+.top .back:hover{opacity:1;color:var(--sodium)}
+.top .mark{display:flex;align-items:center;gap:14px;font:400 13px/1 var(--mono);letter-spacing:.42em;text-transform:uppercase;white-space:nowrap}
+.top .mark::before,.top .mark::after{content:"";width:34px;height:1px;background:currentColor;opacity:.5}
+.top .who{justify-self:end;font:500 11px/1 var(--mono);letter-spacing:.16em;text-transform:uppercase;color:var(--dim)}
+
+/* ---------- história (scroll scrub) ---------- */
+.story{position:relative;height:820vh}
+.stage{position:sticky;top:0;height:100vh;height:100svh;overflow:hidden;background:#07080b}
+#scene{position:absolute;inset:0;width:100%;height:100%;display:block}
+.load{position:absolute;left:0;top:0;height:2px;width:var(--l,0%);background:var(--sodium);transition:width .3s;z-index:2}
+.scrim{position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(90deg,rgba(7,8,11,.74) 0%,rgba(7,8,11,0) 46%,rgba(7,8,11,0) 54%,rgba(7,8,11,.74) 100%),
+             linear-gradient(0deg,rgba(7,8,11,.7) 0%,rgba(7,8,11,0) 26%)}
+.chapter{position:absolute;top:50%;width:min(430px,38vw);transform:translateY(-50%);will-change:opacity,transform}
+.chapter.l{left:max(5vw, env(safe-area-inset-left, 0px))}
+.chapter.r{right:max(5vw, env(safe-area-inset-right, 0px))}
+.chapter .label{color:var(--paper);opacity:.75;display:flex;gap:10px;align-items:center}
+.chapter .label i{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--dot,var(--sodium));box-shadow:0 0 10px var(--dot,var(--sodium))}
+.chapter h1,.chapter h2{font-size:clamp(40px,5.2vw,74px);line-height:.98;margin:18px 0 18px}
+.chapter h1 em,.chapter h2 em{font-style:italic;color:#f3c58c}
+.chapter p{margin:0;max-width:36ch;color:rgba(235,228,212,.86);font-size:15.5px}
+.chapter .param{margin-top:22px;padding-top:14px;border-top:1px solid var(--rule);font:400 11.5px/1.7 var(--mono);color:var(--dim);letter-spacing:.02em}
+.chapter .param b{color:var(--paper);font-weight:500}
+.hint{position:absolute;left:50%;bottom:calc(84px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);font:500 10.5px/1 var(--mono);letter-spacing:.24em;text-transform:uppercase;color:var(--dim);display:flex;flex-direction:column;align-items:center;gap:10px}
+.hint::after{content:"";width:1px;height:34px;background:linear-gradient(var(--dim),transparent);animation:drip 1.8s ease-in-out infinite}
+@keyframes drip{0%{transform:scaleY(0);transform-origin:top}50%{transform:scaleY(1);transform-origin:top}51%{transform-origin:bottom}100%{transform:scaleY(0);transform-origin:bottom}}
+.timeline{position:absolute;left:0;right:0;bottom:calc(26px + env(safe-area-inset-bottom,0px));display:grid;grid-template-columns:repeat(6,1fr);gap:10px;
+  padding-left:max(5vw, env(safe-area-inset-left, 0px));padding-right:max(5vw, env(safe-area-inset-right, 0px))}
+.timeline span{position:relative;padding-top:12px;font:500 10px/1.3 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:rgba(235,228,212,.38);transition:color .4s}
+.timeline span::before{content:"";position:absolute;top:0;left:0;right:0;height:1px;background:rgba(235,228,212,.18)}
+.timeline span::after{content:"";position:absolute;top:0;left:0;height:1px;width:var(--f,0%);background:var(--sodium)}
+.timeline span.on{color:var(--paper)}
+
+/* ---------- seções ---------- */
+section.block{padding-block:clamp(84px,12vw,150px);border-top:1px solid var(--rule)}
+.intro{display:grid;grid-template-columns:5fr 6fr;gap:clamp(32px,6vw,90px);align-items:start}
+.intro h2{font-size:clamp(38px,4.6vw,64px);line-height:1.02}
+.intro h2 em{font-style:italic;color:var(--sodium)}
+.intro .txt{min-width:0;display:grid;gap:18px;color:rgba(235,228,212,.86);max-width:62ch}
+.intro .txt p{margin:0}
+.facts{margin-top:clamp(56px,7vw,90px);display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--rule)}
+.facts div{padding:22px 18px 0 0;display:grid;gap:6px}
+.facts div+div{padding-left:18px;border-left:1px solid var(--rule)}
+.facts strong{font:400 clamp(42px,4.6vw,60px)/1 var(--display);color:var(--paper);font-variant-numeric:tabular-nums}
+.facts span{font-size:13.5px;color:var(--dim);max-width:24ch}
+
+.head{display:flex;justify-content:space-between;align-items:end;gap:24px;flex-wrap:wrap;margin-bottom:clamp(40px,6vw,72px)}
+.head h2{font-size:clamp(38px,4.6vw,64px);line-height:1.02;max-width:16ch}
+.head p{margin:0;max-width:44ch;color:var(--dim)}
+
+/* processo */
+.steps{display:grid;gap:0}
+.step{display:grid;grid-template-columns:80px minmax(0,4fr) minmax(0,5fr);gap:clamp(20px,4vw,56px);padding-block:clamp(36px,5vw,56px);border-top:1px solid var(--rule);align-items:start}
+.step .n{font:400 13px/1 var(--mono);color:var(--sodium);letter-spacing:.1em;padding-top:10px}
+.step h3{font-size:clamp(28px,3vw,40px);line-height:1.05;margin-bottom:14px}
+.step p{margin:0 0 12px;color:rgba(235,228,212,.84);max-width:52ch}
+.step figure{margin:0;min-width:0}
+.step img{display:block;width:100%;height:auto;aspect-ratio:16/8;object-fit:cover;border-radius:2px;filter:saturate(.85) contrast(1.04)}
+.step figcaption{margin-top:10px;font:400 11px/1.5 var(--mono);color:var(--dim);letter-spacing:.04em}
+.tags{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px;padding:0;list-style:none}
+.tags li{font:400 11.5px/1 var(--mono);padding:8px 10px;border:1px solid var(--rule);border-radius:2px;color:var(--paper)}
+.feats{margin:0;padding:0;list-style:none;display:grid;grid-template-columns:1fr 1fr;gap:0;border-top:1px solid var(--rule)}
+.feats li{min-width:0;display:grid;gap:4px;padding:14px 14px 14px 0;border-bottom:1px solid var(--rule)}
+.feats li:nth-child(even){padding-left:14px;border-left:1px solid var(--rule)}
+.feats b{font:400 22px/1.1 var(--display);color:var(--paper);font-weight:400}
+.feats span{font-size:13.5px;color:var(--dim)}
+.classes{margin:0;padding:18px 20px;background:var(--asphalt);border:1px solid var(--rule);border-radius:2px;font:400 12.5px/1.95 var(--mono);color:var(--dim);overflow-x:auto;white-space:pre}
+.classes b{color:var(--paper);font-weight:500}
+.classes i{font-style:normal;color:var(--sodium)}
+
+/* painel do operador */
+.roles{display:grid;grid-template-columns:1fr 1fr;gap:clamp(24px,4vw,56px);margin-bottom:clamp(36px,5vw,56px)}
+.roles div{min-width:0;padding-top:18px;border-top:1px solid var(--rule)}
+.roles h3{font-size:30px;margin-bottom:10px}
+.roles p{margin:0;color:rgba(235,228,212,.84);max-width:50ch}
+.console{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:0;border:1px solid var(--rule);border-radius:3px;overflow:hidden;background:var(--asphalt)}
+.view{position:relative;min-width:0;aspect-ratio:16/9;overflow:hidden;background:#000}
+.view img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .7s ease}
+.view img.on{opacity:1}
+.points{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:14px}
+.points::before{content:"Ponto de vista";font:500 10.5px/1 var(--mono);letter-spacing:.16em;text-transform:uppercase;color:var(--dim);margin-right:6px}
+.points button{all:unset;cursor:pointer;font:500 11px/1 var(--mono);letter-spacing:.06em;padding:9px 12px;border:1px solid var(--rule);border-radius:999px;color:var(--paper);transition:background .2s,border-color .2s}
+.points button:hover{border-color:var(--paper)}
+.points button[aria-pressed="true"]{background:var(--paper);color:var(--night);border-color:var(--paper)}
+.points button:focus-visible{outline:2px solid var(--sodium);outline-offset:2px}
+.view .hud{position:absolute;left:12px;top:12px;font:500 10px/1 var(--mono);letter-spacing:.16em;text-transform:uppercase;color:var(--paper);background:rgba(10,12,16,.6);padding:7px 9px;border-radius:2px;display:flex;gap:8px;align-items:center}
+.view .hud i{width:6px;height:6px;border-radius:50%;background:#e5484d;animation:rec 1.4s ease-in-out infinite}
+@keyframes rec{50%{opacity:.25}}
+.panel{position:absolute;left:50%;bottom:12px;transform:translateX(-50%);display:flex;gap:6px;padding:6px;background:rgba(10,12,16,.72);border:1px solid var(--rule);border-radius:6px;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);max-width:calc(100% - 24px);overflow-x:auto}
+.panel button{all:unset;cursor:pointer;flex:0 0 auto;width:54px;display:grid;justify-items:center;gap:5px;padding:7px 4px 6px;border-radius:4px;color:var(--paper);font:500 8.5px/1.15 var(--mono);letter-spacing:.06em;text-transform:uppercase;text-align:center;opacity:.72;transition:background .2s,opacity .2s}
+.panel button:hover{opacity:1;background:rgba(255,255,255,.06)}
+.panel button[aria-pressed="true"]{opacity:1;background:var(--signal)}
+.panel button:focus-visible{outline:2px solid var(--sodium)}
+.panel svg{width:22px;height:22px}
+.side{min-width:0;border-left:1px solid var(--rule);padding:18px 18px 20px;display:grid;align-content:start;gap:18px}
+.side h4{margin:0 0 8px;font:500 10.5px/1 var(--mono);letter-spacing:.16em;text-transform:uppercase;color:var(--dim)}
+.readout{margin:0;font:400 11.5px/1.85 var(--mono);color:var(--dim);white-space:pre-wrap;word-break:break-word}
+.readout b{color:var(--paper);font-weight:500}
+.readout .v{color:#f3c58c}
+.groups{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.groups button{all:unset;cursor:pointer;display:grid;justify-items:center;gap:5px;padding:9px 4px 7px;border-radius:4px;border:1px solid var(--rule);font:500 8.5px/1 var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--paper);transition:opacity .2s,border-color .2s}
+.groups button svg{width:20px;height:20px;color:var(--sodium)}
+.groups button[aria-pressed="false"]{opacity:.38}
+.groups button[aria-pressed="false"] svg{color:var(--dim)}
+.groups button:focus-visible{outline:2px solid var(--sodium)}
+.note{font:400 10.5px/1.5 var(--mono);color:var(--dim);margin:14px 0 0}
+
+/* experiência */
+.senses{display:grid;grid-template-columns:repeat(3,1fr);gap:clamp(24px,3vw,40px)}
+.senses div{min-width:0;padding-top:20px;border-top:1px solid var(--sodium)}
+.senses h3{font-size:34px;margin-bottom:12px}
+.senses p{margin:0;color:rgba(235,228,212,.84)}
+/* etapas da sessão */
+.session{list-style:none;margin:0 0 clamp(36px,5vw,56px);padding:0;display:grid;grid-template-columns:repeat(5,1fr);gap:0;counter-reset:s;border-top:1px solid var(--rule)}
+.session li{min-width:0;counter-increment:s;padding:18px 18px 0 0;display:grid;gap:8px;align-content:start}
+.session li+li{padding-left:18px;border-left:1px solid var(--rule)}
+.session li::before{content:counter(s,decimal-leading-zero);font:400 12px/1 var(--mono);color:var(--sodium);letter-spacing:.1em}
+.session b{font:400 24px/1.1 var(--display);color:var(--paper);font-weight:400}
+.session span{font-size:14px;color:rgba(235,228,212,.8)}
+/* o que é medido */
+.measure{display:grid;grid-template-columns:repeat(3,1fr);gap:clamp(24px,3vw,40px)}
+.measure>div{min-width:0;padding:22px 22px 24px;background:var(--asphalt);border:1px solid var(--rule);border-radius:3px;display:grid;gap:10px;align-content:start}
+.measure h3{font-size:30px;line-height:1.05}
+.measure ul{margin:4px 0 0;padding:0;list-style:none;display:grid;gap:8px}
+.measure li{padding-left:16px;position:relative;color:rgba(235,228,212,.86);font-size:15px}
+.measure li::before{content:"";position:absolute;left:0;top:.62em;width:6px;height:6px;border-radius:50%;background:var(--sodium)}
+dd a{color:var(--paper);text-decoration-color:var(--sodium);text-underline-offset:3px}
+dd a:hover{color:#f3c58c}
+.wide{margin-top:clamp(48px,6vw,80px);position:relative}
+.wide img{display:block;width:100%;height:auto;aspect-ratio:16/9;object-fit:cover;border-radius:2px}
+.wide figcaption{margin-top:10px;font:400 11px/1.5 var(--mono);color:var(--dim)}
+
+/* ficha */
+.sheet{display:grid;grid-template-columns:5fr 7fr;gap:clamp(32px,6vw,90px)}
+.sheet h2{font-size:clamp(38px,4.6vw,64px);line-height:1.02}
+dl{margin:0;display:grid;grid-template-columns:minmax(120px,190px) minmax(0,1fr);border-top:1px solid var(--rule)}
+dt,dd{margin:0;padding:15px 0;border-bottom:1px solid var(--rule)}
+dt{font:500 10.5px/1.6 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--dim);padding-top:18px}
+dd{color:var(--paper)}
+
+/* fechamento */
+.close{text-align:left;padding-block:clamp(100px,14vw,180px);border-top:1px solid var(--rule);position:relative;overflow:hidden}
+.close h2{font-size:clamp(44px,6.4vw,96px);line-height:.98;max-width:15ch}
+.close h2 em{font-style:italic;color:var(--sodium)}
+.close .row{margin-top:40px;display:flex;flex-wrap:wrap;gap:14px;align-items:center}
+.btn{display:inline-flex;align-items:center;gap:12px;padding:15px 22px;border-radius:999px;background:var(--paper);color:var(--night);text-decoration:none;font:500 12px/1 var(--mono);letter-spacing:.14em;text-transform:uppercase}
+.btn:hover{background:#f3c58c}
+.btn.ghost{background:transparent;color:var(--paper);border:1px solid var(--rule)}
+.btn.ghost:hover{border-color:var(--paper);background:transparent}
+footer{border-top:1px solid var(--rule);padding-block:26px calc(26px + env(safe-area-inset-bottom,0px))}
+footer .wrap{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;font:400 11px/1.5 var(--mono);color:var(--dim);letter-spacing:.06em}
+
+/* ---------- responsivo ---------- */
+@media (max-width:900px){
+  .intro,.sheet{grid-template-columns:1fr}
+  .facts{grid-template-columns:1fr 1fr}
+  .facts div:nth-child(3){padding-left:0;border-left:0}
+  .facts div:nth-child(n+3){border-top:1px solid var(--rule);margin-top:22px}
+  .step{grid-template-columns:1fr;gap:16px}
+  .step .n{padding-top:0}
+  .roles,.senses,.measure{grid-template-columns:1fr}
+  .session{grid-template-columns:1fr}
+  .session li,.session li+li{padding:16px 0 14px;border-left:0;border-bottom:1px solid var(--rule)}
+  .console{grid-template-columns:1fr}
+  .side{border-left:0;border-top:1px solid var(--rule)}
+  .groups{grid-template-columns:repeat(5,1fr)}
+}
+@media (max-width:720px){
+  .top{grid-template-columns:1fr auto}
+  .top .mark{display:none}
+  .chapter,.chapter.l,.chapter.r{left:max(20px, env(safe-area-inset-left, 0px));right:max(20px, env(safe-area-inset-right, 0px));width:auto;top:auto;bottom:calc(92px + env(safe-area-inset-bottom,0px));transform:none}
+  .chapter h1,.chapter h2{font-size:clamp(36px,10vw,48px)}
+  .chapter p{font-size:14.5px}
+  .scrim{background:linear-gradient(0deg,rgba(7,8,11,.88) 0%,rgba(7,8,11,.55) 42%,rgba(7,8,11,0) 70%)}
+  .hint{display:none}
+  .timeline span{font-size:0;letter-spacing:0}
+  .view{aspect-ratio:4/3}
+  .panel{left:8px;right:8px;transform:none;max-width:none;gap:2px;padding:4px}
+  .panel button{flex:1 1 0;width:auto;min-width:0;padding:6px 1px 5px;font-size:7.5px;letter-spacing:.03em}
+  .panel svg{width:18px;height:18px}
+  .groups{grid-template-columns:repeat(3,1fr)}
+  dl{grid-template-columns:1fr}
+  dt{border-bottom:0;padding-bottom:0}
+}
+@media (prefers-reduced-motion:reduce){
+  .hint::after,.view .hud i{animation:none}
+  .view img{transition:none}
+}
+</style>
+</head>
+<body>
+
+
+<header class="top">
+  <a class="back" href="https://www.upvr.com.br/portfolio" target="_top">← UPVR</a>
+  <div class="mark">Medo do Crime</div>
+  <div class="who">USP · Ribeirão Preto</div>
+</header>
+
+<main>
+  <!-- ============ HISTÓRIA ============ -->
+  <section class="story" id="story" aria-label="A praça, do dia à noite">
+    <div class="stage">
+      <canvas id="scene" aria-hidden="true"></canvas>
+      <div class="load" id="load" aria-hidden="true"></div>
+      <div class="scrim"></div>
+
+      <article class="chapter l" data-i="0">
+        <div class="label"><i></i>Praça da Sé · São Paulo</div>
+        <h1>Seis momentos para entender o <em>medo</em>.</h1>
+        <p>Uma experiência em realidade virtual feita para a pesquisa da Profa. Claudia Padovan, da Faculdade de Medicina de Ribeirão Preto (USP). O participante atravessa a mesma praça em seis estágios: de dia e de noite, limpa e suja, bem e mal iluminada.</p>
+      </article>
+
+      <article class="chapter r" data-i="1" style="--dot:#f5a82e">
+        <div class="label"><i></i>Estágio 1 de 6 · Dia limpo</div>
+        <h2>A praça como <em>deveria ser</em>.</h2>
+        <p>Calçada varrida, muros limpos, postes apagados. É a linha de base para os outros cinco momentos.</p>
+        <div class="param">Sol · Rua limpa · Postes apagados</div>
+      </article>
+
+      <article class="chapter l" data-i="2" style="--dot:#9e7333">
+        <div class="label"><i></i>Estágio 2 de 6 · Dia sujo</div>
+        <h2>Mesma hora, outro <em>cuidado</em>.</h2>
+        <p>Lixo acumulado, muros pichados, entulho na calçada. A luz do sol não muda. Só aparecem os sinais de abandono.</p>
+        <div class="param">Sol · Lixo acumulado · Muros pichados</div>
+      </article>
+
+      <article class="chapter r" data-i="3" style="--dot:#3b6bd9">
+        <div class="label"><i></i>Estágio 3 de 6 · Noite limpa</div>
+        <h2>A luz muda. A percepção <em>vai junto</em>.</h2>
+        <p>Céu, névoa e exposição trocam de uma vez, e cada poste e janela acende. A praça continua limpa.</p>
+        <div class="param">Noite · Rua limpa · Iluminação completa</div>
+      </article>
+
+      <article class="chapter l" data-i="4" style="--dot:#7352b3">
+        <div class="label"><i></i>Estágio 4 de 6 · Noite suja</div>
+        <h2>O abandono <em>no escuro</em>.</h2>
+        <p>O lixo e as pichações voltam, agora sob luz artificial. Ratos andam pelo lixo e fogem dos passos. Moscas zumbem por perto.</p>
+        <div class="param">Noite · Lixo e pichação · Ratos e moscas</div>
+      </article>
+
+      <article class="chapter r" data-i="5" style="--dot:#e65940">
+        <div class="label"><i></i>Estágio 5 de 6 · Noite, iluminação ruim, limpa</div>
+        <h2>Quatro em cada dez lâmpadas <em>queimadas</em>.</h2>
+        <p>As luzes caem para 35% da força, 40% apagam e algumas piscam com estalo elétrico. São sempre as mesmas, para que todo participante veja a mesma praça.</p>
+        <div class="param">Noite · Luz fraca · Postes que piscam</div>
+      </article>
+
+      <article class="chapter l" data-i="6" style="--dot:#b31f26">
+        <div class="label"><i></i>Estágio 6 de 6 · Noite, iluminação ruim, suja</div>
+        <h2>Tudo junto. <em>Nenhum crime.</em></h2>
+        <p>Escuro, sujo, pichado, com postes falhando. Nada acontece na cena. O que o participante sente vem só do ambiente.</p>
+        <div class="param">Noite · Luz fraca · Lixo, pichação e abandono</div>
+      </article>
+
+      <div class="hint">Role para se afastar da Catedral</div>
+      <nav class="timeline" aria-hidden="true">
+        <span>Dia limpo</span><span>Dia sujo</span><span>Noite limpa</span><span>Noite suja</span><span>Luz ruim, limpa</span><span>Luz ruim, suja</span>
+      </nav>
+    </div>
+  </section>
+
+  <!-- ============ O ESTUDO ============ -->
+  <section class="block" id="estudo">
+    <div class="wrap">
+      <div class="label" style="margin-bottom:28px">O projeto</div>
+      <div class="intro">
+        <h2>Medo do crime não é a mesma coisa que <em>crime</em>.</h2>
+        <div class="txt">
+          <p>O medo do crime afeta a saúde. Ele aparece ligado a alterações do sono e a quadros de pânico, ansiedade e depressão, mesmo em quem nunca foi vítima. Entender essa ligação é o objetivo do projeto “Abordagem translacional no estudo do medo do crime”, coordenado pela Profa. Claudia Maria Padovan na Faculdade de Medicina de Ribeirão Preto (USP), com apoio da FAPESP.</p>
+          <p>A sensação de insegurança nasce de sinais do ambiente: quanta luz existe, se a rua está cuidada, se há gente por perto. Na cidade real esses sinais mudam todos ao mesmo tempo, e não dá para isolar um deles. Em realidade virtual dá.</p>
+          <p>A UPVR desenvolveu para o estudo uma réplica navegável da Praça da Sé que passa por seis estágios. A cidade vai ficando suja, pichada e mal iluminada, um sinal de cada vez, enquanto sensores registram como o corpo do participante responde. É o mesmo percurso e as mesmas lâmpadas queimadas para cada pessoa.</p>
+        </div>
+      </div>
+      <div class="facts">
+        <div><strong>6</strong><span>estágios, do dia limpo à noite suja e mal iluminada</span></div>
+        <div><strong>3</strong><span>sinais combinados: período, sujeira e iluminação</span></div>
+        <div><strong>4</strong><span>sinais do corpo registrados: pressão, coração, respiração e cortisol</span></div>
+        <div><strong>5</strong><span>tipos de zona viva: som, ratos, insetos, luz com defeito e porta</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ PROCESSO ============ -->
+  <section class="block" id="processo">
+    <div class="wrap">
+      <div class="head">
+        <div>
+          <div class="label" style="margin-bottom:18px">Processo</div>
+          <h2>Da referência ao laboratório</h2>
+        </div>
+        <p>Cinco etapas, cada uma dependente da anterior. A praça precisava existir antes de poder ser alterada, e precisava ser alterável antes de ser apresentada.</p>
+      </div>
+
+      <div class="steps">
+        <div class="step">
+          <div class="n">01</div>
+          <div>
+            <h3>A Praça da Sé, em escala real</h3>
+            <p>Reconstruímos o coração de São Paulo com cuidado de cenógrafo: a fachada gótica da Catedral, o corredor de palmeiras imperiais, o piso em mosaico português e os prédios que cercam a praça. Quem conhece o lugar se reconhece nele.</p>
+            <p>Toda a cidade foi preparada para rodar leve e fluida dentro dos óculos, sem perder os detalhes que fazem o lugar parecer real.</p>
+            <ul class="tags"><li>Catedral da Sé</li><li>Palmeiras imperiais</li><li>Piso em mosaico</li><li>Prédios do entorno</li><li>Comércio e letreiros</li></ul>
+          </div>
+          <figure>
+            <img src="img/catedral-dia.jpg" alt="Fachada da Catedral da Sé vista de baixo, entre as palmeiras da praça" loading="lazy">
+            <figcaption>Catedral da Sé, render do Unreal Engine 5.8</figcaption>
+          </figure>
+        </div>
+
+        <div class="step">
+          <div class="n">02</div>
+          <div>
+            <h3>Uma praça, várias versões</h3>
+            <p>Sobre a mesma cidade criamos as versões que a pesquisa precisa comparar: a praça limpa e cuidada, a praça com lixo e muros pichados, obras abertas na calçada, a iluminação noturna boa e a ruim.</p>
+            <p>O céu acompanha cada mudança. Nuvens, névoa e luz passam do dia para a noite de forma natural, para que a troca nunca pareça um corte de cena.</p>
+            <ul class="tags"><li>Rua limpa</li><li>Lixo acumulado</li><li>Grafite e pichação</li><li>Obras na calçada</li><li>Iluminação noturna</li><li>Céu de dia e de noite</li></ul>
+          </div>
+          <figure>
+            <img src="img/obras.jpg" alt="Vista de cima de uma obra na rua com cones, buraco aberto e entulho" loading="lazy">
+            <figcaption>Camada de obras: cones, vala aberta e entulho na via</figcaption>
+          </figure>
+        </div>
+
+        <div class="step">
+          <div class="n">03</div>
+          <div>
+            <h3>Uma ferramenta feita para a pesquisa</h3>
+            <p>Criamos uma ferramenta própria que coloca a experiência nas mãos do pesquisador. Com um clique, a praça muda de período, de limpeza e de iluminação, sem que o participante perceba como.</p>
+            <p>Cada versão fica guardada exatamente como foi definida. Assim, a centésima sessão mostra a mesma praça que a primeira, o que é essencial para comparar as reações das pessoas.</p>
+          </div>
+          <ul class="feats" aria-label="O que o pesquisador controla">
+            <li><b>Dia e noite</b><span>céu, névoa e luz trocam juntos</span></li>
+            <li><b>Limpeza da rua</b><span>lixo, entulho e pichação entram e saem</span></li>
+            <li><b>Iluminação</b><span>força das luzes e lâmpadas apagadas</span></li>
+            <li><b>Postes com defeito</b><span>piscando, falhando, morrendo</span></li>
+            <li><b>Sons do ambiente</b><span>bar, coral da igreja, água nos canos</span></li>
+            <li><b>Vida urbana</b><span>ratos, moscas e mariposas</span></li>
+          </ul>
+        </div>
+
+        <div class="step">
+          <div class="n">04</div>
+          <div>
+            <h3>Um ambiente que reage</h3>
+            <p>Zonas espalhadas pela praça dão vida aos sinais. O som de bar, o coral da igreja e a água nos canos crescem quando o participante chega perto e somem aos poucos quando ele se afasta. Ratos andam pelo lixo desviando das colisões. Mariposas circulam os postes acesos.</p>
+            <p>Cada zona pode valer só de noite, só de dia ou sempre.</p>
+          </div>
+          <figure>
+            <img src="img/canteiro.jpg" alt="Canteiro com plantas, lixeira e poste na calçada da praça" loading="lazy">
+            <figcaption>Mobiliário urbano no nível dos olhos do participante</figcaption>
+          </figure>
+        </div>
+
+        <div class="step">
+          <div class="n">05</div>
+          <div>
+            <h3>Andar pela praça</h3>
+            <p>A praça é grande para caminhar só com o corpo. Com a mão apontada para a frente, o teleporte é livre. Levantando a mão, ele passa a andar em passos de 5 ou 10 metros, e o controle vibra a cada passo.</p>
+            <p>A imagem roda estável e fluida nos óculos. É isso que separa uma praça convincente de uma que causa enjoo.</p>
+          </div>
+          <ul class="tags" style="align-self:start;margin-top:0"><li>Teleporte livre</li><li>Passos de 5 m</li><li>Passos de 10 m</li><li>Vibração a cada passo</li><li>Portas que abrem com a mão</li></ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ APRESENTAÇÃO ============ -->
+  <section class="block" id="apresentacao">
+    <div class="wrap">
+      <div class="head">
+        <div>
+          <div class="label" style="margin-bottom:18px">Como apresentamos</div>
+          <h2>Duas pessoas, a mesma praça</h2>
+        </div>
+        <p>A experiência roda com dois papéis. Quem está dentro da praça não vê nenhum controle. Quem está fora vê tudo.</p>
+      </div>
+
+      <div class="roles">
+        <div>
+          <div class="label" style="margin-bottom:12px">Dentro · óculos VR e sensores</div>
+          <h3>O participante</h3>
+          <p>Caminha pela praça em primeira pessoa. Ouve, olha, decide para onde ir. As mudanças acontecem no mundo ao redor dele, sem menus e sem telas de carregamento.</p>
+        </div>
+        <div>
+          <div class="label" style="margin-bottom:12px">Fora · tela do PC</div>
+          <h3>O pesquisador</h3>
+          <p>Acompanha em tempo real o que o participante vê e o trajeto que ele faz. Avança os seis estágios pelo painel de ícones, com o mouse ou pelas teclas 1 a 6 do teclado numérico, e liga ou desliga sons durante a sessão.</p>
+        </div>
+      </div>
+
+      <ol class="session" aria-label="Etapas de uma sessão">
+        <li><b>Preparação</b><span>O pesquisador coloca os óculos e os sensores e testa se tudo está registrando.</span></li>
+        <li><b>Sala branca</b><span>O participante entra primeiro numa sala neutra, para se acostumar a estar em realidade virtual.</span></li>
+        <li><b>Tutorial</b><span>Aprende a se mover, caminhando ou por teleporte, e começa quando se sentir pronto.</span></li>
+        <li><b>A praça</b><span>Atravessa a Praça da Sé enquanto o pesquisador conduz os seis estágios e acompanha o trajeto.</span></li>
+        <li><b>Encerramento</b><span>Os equipamentos são retirados e o participante responde aos questionários.</span></li>
+      </ol>
+
+      <div class="points" id="points" role="group" aria-label="Pontos de vista" hidden></div>
+      <div class="console">
+        <div class="view" id="view" data-s="dia-limpo">
+          <img data-p="1" src="img/p1-estagio-1.jpg" data-s="dia-limpo" class="on" alt="Calçada da Praça da Sé com a Catedral ao fundo: dia, rua limpa">
+          <img data-p="1" src="img/p1-estagio-2.jpg" data-s="dia-sujo" alt="Calçada da Praça da Sé com a Catedral ao fundo: dia, com lixo, caçamba e muros pichados">
+          <img data-p="1" src="img/p1-estagio-3.jpg" data-s="noite-limpa" alt="Calçada da Praça da Sé com a Catedral ao fundo: noite, rua limpa e bem iluminada">
+          <img data-p="1" src="img/p1-estagio-4.jpg" data-s="noite-suja" alt="Calçada da Praça da Sé com a Catedral ao fundo: noite, com lixo, pichação e ratos">
+          <img data-p="1" src="img/p1-estagio-5.jpg" data-s="ruim-limpa" alt="Calçada da Praça da Sé com a Catedral ao fundo: noite, iluminação fraca e postes apagados, rua limpa">
+          <img data-p="1" src="img/p1-estagio-6.jpg" data-s="ruim-suja" alt="Calçada da Praça da Sé com a Catedral ao fundo: noite, iluminação fraca, lixo, pichação e ratos">
+          <div class="hud"><i></i>Visão do participante</div>
+          <div class="panel" role="group" aria-label="Cenários">
+            <button type="button" data-s="dia-limpo" aria-pressed="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6"/></svg>Dia limpo</button>
+            <button type="button" data-s="dia-sujo" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="10" cy="10" r="3.6"/><path d="M10 2.5v1.8M2.5 10h1.8M4.7 4.7l1.3 1.3M15.3 4.7 14 6"/><path d="M14.5 15h7l-.8 6.5h-5.4z"/><path d="M14 15h8"/></svg>Dia sujo</button>
+            <button type="button" data-s="noite-limpa" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M19.5 14.8A8 8 0 0 1 9.2 4.5a8 8 0 1 0 10.3 10.3z"/></svg>Noite limpa</button>
+            <button type="button" data-s="noite-suja" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 10.5A6.5 6.5 0 0 1 6.6 2.1 6.5 6.5 0 1 0 15 10.5z"/><path d="M14.5 15h7l-.8 6.5h-5.4z"/><path d="M14 15h8"/></svg>Noite suja</button>
+            <button type="button" data-s="ruim-limpa" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 10.5A6.5 6.5 0 0 1 6.6 2.1 6.5 6.5 0 1 0 15 10.5z"/><path d="M18 12v10M15.5 12h5M18 12l-1.4 2.6h2.8z"/><path d="M21.2 16.5l1.6-1M21.2 18.5l1.6 1"/></svg>Luz ruim limpa</button>
+            <button type="button" data-s="ruim-suja" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M11 8.5A5 5 0 0 1 4.6 2.1 5 5 0 1 0 11 8.5z"/><path d="M6 12v10M3.5 12h5M6 12l-1.4 2.6h2.8z"/><path d="M14.5 15h7l-.8 6.5h-5.4z"/><path d="M14 15h8"/></svg>Luz ruim suja</button>
+          </div>
+        </div>
+        <aside class="side" aria-live="polite">
+          <div>
+            <h4>Estágio ativo</h4>
+            <pre class="readout" id="readout"></pre>
+          </div>
+          <div>
+            <h4>Grupos</h4>
+            <div class="groups" id="groups" role="group" aria-label="Grupos de objetos"></div>
+            <p class="note" id="gnote">Clique num grupo para mostrar ou esconder.</p>
+          </div>
+        </aside>
+      </div>
+      <p class="note">Imagens reais de cada estágio, capturadas no Unreal Engine. Escolha o ponto de vista e clique nos ícones para trocar o estágio.</p>
+    </div>
+  </section>
+
+  <!-- ============ O QUE É MEDIDO ============ -->
+  <section class="block" id="medidas">
+    <div class="wrap">
+      <div class="head">
+        <div>
+          <div class="label" style="margin-bottom:18px">O que é medido</div>
+          <h2>O corpo responde antes da palavra</h2>
+        </div>
+        <p>A praça é o estímulo. O que a pesquisa observa é a reação de quem passa por ela, medida no corpo e em escalas psicológicas.</p>
+      </div>
+      <div class="measure">
+        <div>
+          <div class="label">Durante a sessão</div>
+          <h3>Sinais fisiológicos</h3>
+          <ul><li>Pressão arterial</li><li>Frequência cardíaca</li><li>Frequência respiratória</li></ul>
+        </div>
+        <div>
+          <div class="label">Antes e depois</div>
+          <h3>Hormônio do estresse</h3>
+          <ul><li>Cortisol na saliva, coletado antes de entrar e depois de sair da praça</li></ul>
+        </div>
+        <div>
+          <div class="label">Depois da experiência</div>
+          <h3>Questionários</h3>
+          <ul><li>Qualidade do sono (PSQI)</li><li>Depressão, ansiedade e estresse (DASS-21)</li><li>Cognição (MoCA)</li><li>Dificuldade de reconhecer emoções (TAS-20)</li><li>Crenças pessoais e medo do crime</li></ul>
+        </div>
+      </div>
+      <p class="note">Desenho do estudo conforme o projeto FAPESP 24/22996-5. A pesquisa também tem uma etapa com modelos animais, que não usa a realidade virtual.</p>
+    </div>
+  </section>
+
+  <!-- ============ EXPERIÊNCIA ============ -->
+  <section class="block" id="experiencia">
+    <div class="wrap">
+      <div class="head">
+        <div>
+          <div class="label" style="margin-bottom:18px">A experiência</div>
+          <h2>O que o participante sente</h2>
+        </div>
+        <p>Nada na praça é ameaçador por si só. A experiência funciona porque soma sinais pequenos, cada um controlado.</p>
+      </div>
+      <div class="senses">
+        <div><h3>Ver</h3><p>A Catedral ao fundo, as palmeiras, os postes. Depois a mesma vista com metade da luz, poças escuras entre os postes e uma lâmpada que falha a cada poucos segundos.</p></div>
+        <div><h3>Ouvir</h3><p>Som em 3D vindo da direção de cada fonte. O bar fica mais alto ao passar na frente, a mosca zumbe perto do lixo, o poste estala quando apaga.</p></div>
+        <div><h3>Andar</h3><p>Liberdade para escolher o caminho: atravessar a praça pelo meio ou contornar pela calçada iluminada. A escolha também é dado.</p></div>
+      </div>
+      <figure class="wide">
+        <img src="img/praca-noite.jpg" alt="Vista aérea da Praça da Sé à noite, com a Catedral ao fundo e as fileiras de postes" loading="lazy">
+        <figcaption>A praça inteira no estágio 6: noite, iluminação ruim e sujeira. Cada poste pode ser apagado, enfraquecido ou posto para piscar.</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <!-- ============ FICHA ============ -->
+  <section class="block" id="ficha">
+    <div class="wrap sheet">
+      <div>
+        <div class="label" style="margin-bottom:18px">Ficha técnica</div>
+        <h2>Medo do Crime</h2>
+      </div>
+      <dl>
+        <dt>Cliente</dt><dd>Faculdade de Medicina de Ribeirão Preto · Universidade de São Paulo</dd>
+        <dt>Coordenação</dt><dd>Profa. Dra. Claudia Maria Padovan</dd>
+        <dt>Pesquisa</dt><dd><a href="https://bv.fapesp.br/pt/auxilios/119635/" target="_blank" rel="noopener">Abordagem translacional no estudo do medo do crime</a> · FAPESP 24/22996-5 · 2026–2029</dd>
+        <dt>Equipe associada</dt><dd>Carla Cardoso, Cléssio Moura de Souza, Jesus Landeira-Fernandez, Norberto Cysne Coimbra, Roseli de Deus Lopes e Ruth Estevão</dd>
+        <dt>Local recriado</dt><dd>Praça da Sé, São Paulo</dd>
+        <dt>Formato</dt><dd>Realidade virtual com Meta Quest 3 e PC, com tela de acompanhamento para o pesquisador</dd>
+        <dt>Engine</dt><dd>Unreal Engine 5.8</dd>
+        <dt>Controle</dt><dd>Painel do pesquisador desenvolvido pela UPVR sob medida para o estudo</dd>
+        <dt>Ambientação</dt><dd>Ciclo de dia e noite, som espacial e elementos vivos na praça</dd>
+        <dt>Ano</dt><dd>2026</dd>
+        <dt>Estúdio</dt><dd>UPVR · Realidade Virtual</dd>
+      </dl>
+    </div>
+  </section>
+
+  <section class="close">
+    <div class="wrap">
+      <div class="label" style="margin-bottom:24px">Próximo projeto</div>
+      <h2>Sua pergunta de pesquisa também pode virar um <em>lugar</em>.</h2>
+      <div class="row">
+        <a class="btn" href="https://www.upvr.com.br/#contato" target="_top">Falar com a UPVR →</a>
+        <a class="btn ghost" href="https://www.upvr.com.br/portfolio" target="_top">Ver portfólio</a>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap"><span>UPVR · Realidade Virtual e Visualização 3D</span><span>Medo do Crime · USP Ribeirão Preto · 2026</span></div>
+</footer>
+
+<script>
+/* =====================================================================
+   CENA DO TOPO · sequência renderizada no Unreal (USPVR, MRQ)
+   Câmera no meio do corredor de palmeiras, olhando a Catedral, recuando
+   até mostrar a praça inteira. 120 quadros, 20 por estágio:
+   0-19 Dia limpo · 20-39 Dia sujo · 40-59 Noite limpa · 60-79 Noite suja
+   80-99 Luz ruim limpa · 100-119 Luz ruim suja.
+   A rolagem escolhe o quadro; entre dois quadros a imagem faz fusão.
+   ===================================================================== */
+(() => {
+  const FRAMES = 120;
+  const src = i => `frames/f_${String(i).padStart(3, '0')}.webp`;
+  // capítulo 0 (abertura) e 1 (estágio 1) dividem os quadros 0-19; depois 1 capítulo por estágio
+  const KNOTS_P = [0, 2 / 7, 3 / 7, 4 / 7, 5 / 7, 6 / 7, 1];
+  const KNOTS_F = [0, 19.5, 39.5, 59.5, 79.5, 99.5, 119];
+
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const story = document.getElementById('story');
+  const cv = document.getElementById('scene');
+  const ctx = cv.getContext('2d');
+  const chapters = [...document.querySelectorAll('.chapter')];
+  const ticks = [...document.querySelectorAll('.timeline span')];
+  const hint = document.querySelector('.hint');
+  const load = document.getElementById('load');
+
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  const smooth = (a, b, v) => { const t = clamp((v - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
+
+  // carrega o primeiro quadro, depois os outros em ordem
+  const imgs = new Array(FRAMES);
+  let loaded = 0;
+  function get(i) {
+    if (!imgs[i]) { const im = new Image(); im.decoding = 'async'; im.onload = () => { loaded++; if (load) load.style.setProperty('--l', (loaded / FRAMES * 100).toFixed(0) + '%'); if (loaded === FRAMES && load) load.hidden = true; }; im.src = src(i); imgs[i] = im; }
+    return imgs[i];
+  }
+  get(0);
+  for (let i = 1; i < FRAMES; i++) get(i);
+  const ok = im => im && im.complete && im.naturalWidth;
+  function nearest(i) { for (let d = 0; d < FRAMES; d++) { if (ok(imgs[i - d])) return imgs[i - d]; if (ok(imgs[i + d])) return imgs[i + d]; } return null; }
+
+  let W = 0, H = 0, DPR = 1;
+  function resize() { DPR = Math.min(window.devicePixelRatio || 1, 2); W = cv.clientWidth; H = cv.clientHeight; cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR); }
+  addEventListener('resize', resize); resize();
+
+  let target = 0, p = 0;
+  function readScroll() { const r = story.getBoundingClientRect(); target = clamp(-r.top / (story.offsetHeight - innerHeight), 0, 1); }
+  addEventListener('scroll', readScroll, { passive: true }); readScroll(); p = target;
+
+  function frameAt(p) {
+    for (let k = 1; k < KNOTS_P.length; k++) if (p <= KNOTS_P[k]) {
+      const t = (p - KNOTS_P[k - 1]) / (KNOTS_P[k] - KNOTS_P[k - 1]);
+      return KNOTS_F[k - 1] + (KNOTS_F[k] - KNOTS_F[k - 1]) * t;
+    }
+    return FRAMES - 1;
+  }
+  function cover(im, alpha) {
+    const iw = im.naturalWidth, ih = im.naturalHeight, s = Math.max(W / iw, H / ih);
+    const w = iw * s, h = ih * s;
+    ctx.globalAlpha = alpha;
+    ctx.drawImage(im, (W - w) / 2, (H - h) * .35, w, h);
+  }
+  let lastKey = '';
+  function draw() {
+    const f = clamp(frameAt(p), 0, FRAMES - 1);
+    const i = Math.floor(f), j = Math.min(FRAMES - 1, i + 1), t = f - i;
+    const key = f.toFixed(3) + W + 'x' + H + loaded;
+    if (key === lastKey) return;
+    lastKey = key;
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    const a = ok(imgs[i]) ? imgs[i] : nearest(i), b = ok(imgs[j]) ? imgs[j] : null;
+    if (!a) return;
+    cover(a, 1);
+    if (b && t > 0.01 && !reduce) cover(b, t);
+    ctx.globalAlpha = 1;
+  }
+
+  function updateText() {
+    const n = chapters.length;
+    chapters.forEach((el, i) => {
+      const local = p * n - i;
+      let o;
+      if (i === 0) o = 1 - smooth(.72, .95, local);
+      else if (i === n - 1) o = smooth(.05, .28, local);
+      else o = smooth(.05, .28, local) * (1 - smooth(.72, .95, local));
+      el.style.opacity = o.toFixed(3);
+      el.style.visibility = o < .01 ? 'hidden' : 'visible';
+      el.style.translate = `0 ${((1 - o) * (local < .5 ? 18 : -18)).toFixed(1)}px`;
+    });
+    ticks.forEach((tk, i) => {
+      const f = clamp(p * n - (i + 1), 0, 1);
+      tk.style.setProperty('--f', (f * 100).toFixed(1) + '%');
+      tk.classList.toggle('on', (f > 0 && f < 1) || (i === ticks.length - 1 && f >= 1));
+    });
+    hint.style.opacity = (1 - smooth(.02, .08, p)).toFixed(2);
+  }
+
+  let visible = true;
+  new IntersectionObserver(e => { visible = e[0].isIntersecting; }, { rootMargin: '100px' }).observe(story);
+  function loop() {
+    if (visible) {
+      p = reduce ? target : p + (target - p) * .1;
+      if (Math.abs(target - p) < 1e-4) p = target;
+      draw(); updateText();
+    }
+    requestAnimationFrame(loop);
+  }
+  imgs[0].addEventListener('load', () => { lastKey = ''; draw(); });
+  updateText();
+  requestAnimationFrame(loop);
+})();
+/* =====================================================================
+   PAINEL DO PESQUISADOR (simulação)
+   ===================================================================== */
+(() => {
+  // conjunto padrão de 6 estágios (SUSPVRToolsPanel::CriarCenariosPadrao)
+  const CEN = {
+    'dia-limpo':   { Nome: '1 · Dia limpo',                     Periodo: 'Dia',   Suj: 'Não', Forca: '100%', Queim: 'Nenhuma', Def: 'Não', Tecla: '1' },
+    'dia-sujo':    { Nome: '2 · Dia sujo',                      Periodo: 'Dia',   Suj: 'Sim', Forca: '100%', Queim: 'Nenhuma', Def: 'Não', Tecla: '2' },
+    'noite-limpa': { Nome: '3 · Noite limpa',                   Periodo: 'Noite', Suj: 'Não', Forca: '100%', Queim: 'Nenhuma', Def: 'Não', Tecla: '3' },
+    'noite-suja':  { Nome: '4 · Noite suja',                    Periodo: 'Noite', Suj: 'Sim', Forca: '100%', Queim: 'Nenhuma', Def: 'Não', Tecla: '4' },
+    'ruim-limpa':  { Nome: '5 · Noite, iluminação ruim, limpa', Periodo: 'Noite', Suj: 'Não', Forca: '35%',  Queim: '4 em cada 10', Def: 'Sim', Tecla: '5' },
+    'ruim-suja':   { Nome: '6 · Noite, iluminação ruim, suja',  Periodo: 'Noite', Suj: 'Sim', Forca: '35%',  Queim: '4 em cada 10', Def: 'Sim', Tecla: '6' }
+  };
+  const I = {
+    Arvore: '<path d="M12 21v-6"/><path d="M12 3c3.5 0 6 2.6 6 5.6 0 3.1-2.6 5.4-6 5.4s-6-2.3-6-5.4C6 5.6 8.5 3 12 3z"/>',
+    Camera: '<path d="M3 8.5h11l2 2v3l-2 2H3z"/><path d="M16 11l5-2.5v7L16 13"/><path d="M5 15.5V20"/>',
+    Carro: '<path d="M3.5 15.5V12l2-4.5h13l2 4.5v3.5z"/><path d="M3.5 12h17"/><circle cx="7.5" cy="16.5" r="1.6"/><circle cx="16.5" cy="16.5" r="1.6"/>',
+    Cone: '<path d="M9.8 4h4.4L18 19H6z"/><path d="M4 19h16M8.4 10h7.2M7.4 14.5h9.2"/>',
+    Lixo: '<path d="M5 7h14l-1.2 13.5H6.2z"/><path d="M3.5 7h17M9.5 7V4h5v3M10 11v6M14 11v6"/>',
+    Pessoa: '<circle cx="12" cy="5.5" r="2.4"/><path d="M8 21l1-7-2-1 1.5-4.5h7L17 13l-2 1 1 7"/>',
+    Policia: '<path d="M12 3l7 2.5v5.6c0 4.4-3 8-7 9.9-4-1.9-7-5.5-7-9.9V5.5z"/><path d="M12 8.2l1.2 2.4 2.6.4-1.9 1.8.5 2.6-2.4-1.2-2.4 1.2.5-2.6-1.9-1.8 2.6-.4z"/>',
+    Poste: '<path d="M12 21V8M9 21h6"/><path d="M9 4.5h6L14 8h-4z"/><path d="M12 2.5v2"/>',
+    Objeto: '<path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M4 7.5l8 4.5 8-4.5M12 12v9"/>'
+  };
+  const view = document.getElementById('view');
+  const out = document.getElementById('readout');
+  const gwrap = document.getElementById('groups');
+  const gnote = document.getElementById('gnote');
+  const state = Object.fromEntries(Object.keys(I).map(k => [k, true]));
+  const label = { Arvore: 'Árvores', Camera: 'Câmeras', Carro: 'Carros', Cone: 'Cones', Lixo: 'Lixo', Pessoa: 'Pessoas', Policia: 'Polícia', Poste: 'Postes', Objeto: 'Objetos' };
+
+  Object.keys(I).forEach(k => {
+    const b = document.createElement('button');
+    b.type = 'button'; b.setAttribute('aria-pressed', 'true');
+    b.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${I[k]}</svg>${label[k]}`;
+    b.addEventListener('click', () => {
+      state[k] = !state[k];
+      b.setAttribute('aria-pressed', String(state[k]));
+      gnote.textContent = `Grupo «${label[k]}» ${state[k] ? 'visível' : 'oculto'} para o participante.`;
+    });
+    gwrap.appendChild(b);
+  });
+
+  // pontos de amostragem: cada um tem as 6 imagens img/pN-estagio-K.jpg
+  const POINTS = [
+    { n: 1, nome: 'Calçada da Catedral' },
+    { n: 2, nome: 'Rua lateral' },
+    { n: 3, nome: 'Vista aérea' },
+    { n: 4, nome: 'Jardim da praça' }
+  ];
+  const IDS = ['dia-limpo', 'dia-sujo', 'noite-limpa', 'noite-suja', 'ruim-limpa', 'ruim-suja'];
+  const cur = { p: 1, s: 'dia-limpo' };
+  POINTS.filter(pt => pt.n > 1).forEach(pt => IDS.forEach((id, k) => {
+    const im = new Image();
+    im.dataset.p = pt.n; im.dataset.s = id;
+    im.src = `img/p${pt.n}-estagio-${k + 1}.jpg`;
+    im.alt = `${pt.nome}: estágio ${k + 1}`;
+    view.insertBefore(im, view.querySelector('.hud'));
+  }));
+  function paint() {
+    view.querySelectorAll('img[data-s]').forEach(im => im.classList.toggle('on', im.dataset.s === cur.s && +im.dataset.p === cur.p));
+    ptsBox.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(+b.dataset.p === cur.p)));
+  }
+  const ptsBox = document.getElementById('points');
+  POINTS.forEach(pt => {
+    const b = document.createElement('button');
+    b.type = 'button'; b.dataset.p = pt.n; b.textContent = `${pt.n} · ${pt.nome}`;
+    b.addEventListener('click', () => { cur.p = pt.n; paint(); });
+    ptsBox.appendChild(b);
+  });
+  ptsBox.hidden = POINTS.length < 2;
+  function show(id) {
+    const c = CEN[id];
+    view.dataset.s = id;
+    cur.s = id; paint();
+    view.querySelectorAll('.panel button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.s === id)));
+    out.innerHTML =
+`<b>Estágio</b>             <span class="v">${c.Nome}</span>
+<b>Período</b>             <span class="v">${c.Periodo}</span>
+<b>Lixo e pichação</b>     <span class="v">${c.Suj}</span>
+<b>Força das luzes</b>     <span class="v">${c.Forca}</span>
+<b>Lâmpadas apagadas</b>   <span class="v">${c.Queim}</span>
+<b>Postes piscando</b>     <span class="v">${c.Def}</span>
+<b>Tecla de atalho</b>     <span class="v">${c.Tecla}</span>`;
+  }
+  view.querySelectorAll('.panel button').forEach(b => b.addEventListener('click', () => show(b.dataset.s)));
+  show('dia-limpo');
+})();
+</script>
+
+</body>
+</html>
